@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HexGuard :: Linux Security Hardening Toolkit by Lucasfoking</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --green:      #00ff9c;
+  --green-dim:  rgba(0,255,156,0.35);
+  --green-faint:rgba(0,255,156,0.07);
+  --red:        #ff3c3c;
+  --blue:       #00cfff;
+  --yellow:     #ffe94e;
+  --bg:         #030a05;
+  --bg2:        #080f09;
+  --bg3:        #0d1610;
+  --border:     #162019;
+  --text:       #b8e8c8;
+  --muted:      #3d6b4a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #050d06; }
+::-webkit-scrollbar-thumb { background: #00ff9c33; border-radius: 3px; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Share Tech Mono', monospace;
+  background: var(--bg);
+  color: var(--green);
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* ── SCANLINES ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ── MATRIX CANVAS ── */
+#matrix { position: fixed; inset: 0; z-index: 0; opacity: 0.10; }
+
+.page { position: relative; z-index: 1; }
+
+/* ═══════════════════════════════════
+   TICKER
+═══════════════════════════════════ */
+.ticker {
+  background: #050d06;
+  border-bottom: 1px solid var(--border);
+  padding: 7px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.ticker-inner { display: inline-block; animation: tickerMove 28s linear infinite; }
+@keyframes tickerMove { from { transform: translateX(100vw); } to { transform: translateX(-100%); } }
+.ticker span { margin: 0 36px; }
+.ticker .ok   { color: var(--green); }
+.ticker .warn { color: var(--yellow); }
+.ticker .err  { color: var(--red); }
+
+/* ═══════════════════════════════════
+   HEADER / NAV
+═══════════════════════════════════ */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 48px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(3,10,5,0.85);
+  backdrop-filter: blur(10px);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--green);
+  text-shadow: 0 0 18px var(--green-dim);
+}
+.logo em { color: var(--muted); font-style: normal; font-size: 13px; margin-left: 8px; letter-spacing: 2px; }
+
+.nav-links { display: flex; gap: 6px; }
+.nav-links a {
+  padding: 6px 16px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+.nav-links a:hover {
+  color: var(--green);
+  border-color: var(--green-dim);
+  background: var(--green-faint);
+  text-shadow: 0 0 8px var(--green-dim);
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.dot-live {
+  width: 7px; height: 7px;
+  background: var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ═══════════════════════════════════
+   HERO
+═══════════════════════════════════ */
+.hero {
+  min-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 40px 60px;
+  position: relative;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 55% 35% at 50% 0%, rgba(0,255,156,0.07) 0%, transparent 65%),
+    radial-gradient(ellipse 30% 20% at 50% 100%, rgba(0,255,156,0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-prompt {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  margin-bottom: 28px;
+}
+.hero-prompt span { color: var(--green); }
+
+.hero-eyebrow {
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  color: var(--muted);
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.hero-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(42px, 7vw, 88px);
+  font-weight: 900;
+  line-height: 1.0;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow:
+    0 0 12px var(--green),
+    0 0 40px var(--green-dim),
+    0 0 80px rgba(0,255,156,0.08);
+  margin-bottom: 6px;
+  animation: glitch 7s infinite;
+}
+
+@keyframes glitch {
+  0%,92%,100% { text-shadow: 0 0 12px var(--green), 0 0 40px var(--green-dim); }
+  93% { text-shadow: -4px 0 var(--red), 4px 0 var(--blue), 0 0 20px var(--green); }
+  94% { text-shadow: 4px 0 var(--red), -4px 0 var(--blue); }
+  95% { text-shadow: 0 0 12px var(--green), 0 0 40px var(--green-dim); }
+}
+
+.hero-subtitle {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(10px, 1.5vw, 15px);
+  font-weight: 400;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: var(--green);
+  opacity: 0.6;
+  margin-bottom: 32px;
+}
+
+.hero-desc {
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text);
+  opacity: 0.75;
+  margin-bottom: 50px;
+}
+
+/* ── BOTONES HERO ── */
+.hero-cta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 70px;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: var(--green);
+  color: #030a05;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 4px;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.btn-primary:hover::before { opacity: 0.12; }
+.btn-primary:hover {
+  box-shadow: 0 0 30px var(--green-dim), 0 0 60px rgba(0,255,156,0.15);
+  transform: translateY(-2px);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  background: transparent;
+  color: var(--green);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--green-dim);
+  border-radius: 4px;
+  transition: all 0.25s;
+}
+.btn-secondary:hover {
+  background: var(--green-faint);
+  border-color: var(--green);
+  box-shadow: 0 0 20px var(--green-faint);
+  transform: translateY(-2px);
+}
+
+/* ── STATS ── */
+.hero-stats {
+  display: flex;
+  gap: 50px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.stat { text-align: center; }
+.stat-n {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--green);
+  text-shadow: 0 0 20px var(--green-dim);
+  display: block;
+}
+.stat-l {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════
+   SECCIÓN GENÉRICA
+═══════════════════════════════════ */
+section { padding: 80px 48px; max-width: 1300px; margin: 0 auto; }
+
+.sec-label {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.sec-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 20px var(--green-dim);
+  margin-bottom: 14px;
+}
+.sec-desc {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.65;
+  line-height: 1.8;
+  max-width: 560px;
+  margin-bottom: 48px;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+/* ═══════════════════════════════════
+   MÓDULOS GRID
+═══════════════════════════════════ */
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.mod-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 26px 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s;
+}
+.mod-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: transparent;
+  transition: background 0.25s;
+}
+.mod-card:hover {
+  border-color: var(--green-dim);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(0,255,156,0.08);
+}
+.mod-card:hover::before { background: var(--green); }
+
+.mod-num {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
+.mod-icon {
+  font-size: 22px;
+  margin-bottom: 14px;
+  display: block;
+}
+.mod-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-bottom: 10px;
+}
+.mod-desc {
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.65;
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+.mod-cmd {
+  font-size: 11px;
+  color: var(--muted);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 10px;
+  letter-spacing: 1px;
+}
+.mod-cmd span { color: var(--green); }
+
+/* ═══════════════════════════════════
+   TERMINAL / INSTALL
+═══════════════════════════════════ */
+.terminal-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 760px;
+}
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+}
+.tdot { width: 12px; height: 12px; border-radius: 50%; }
+.tdot-r { background: #ff5f57; }
+.tdot-y { background: #febc2e; }
+.tdot-g { background: #28c840; }
+.t-title { margin-left: auto; font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+
+.terminal-body { padding: 28px; }
+.tline { display: flex; gap: 10px; margin-bottom: 6px; font-size: 13px; line-height: 1.7; }
+.tline.gap { margin-bottom: 18px; }
+.tprompt { color: var(--green); white-space: nowrap; user-select: none; }
+.tcmd    { color: #fff; }
+.tout    { color: var(--muted); padding-left: 20px; font-size: 12px; }
+.tout.ok { color: var(--green); }
+.tout.warn { color: var(--yellow); }
+.tcursor { color: var(--green); animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+/* ═══════════════════════════════════
+   USO / FLAGS TABLA
+═══════════════════════════════════ */
+.flags-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.flags-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.flags-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #0d160f;
+  vertical-align: top;
+  color: var(--text);
+  opacity: 0.8;
+  line-height: 1.6;
+}
+.flags-table td:first-child {
+  color: var(--green);
+  opacity: 1;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.flags-table tr:hover td { background: var(--green-faint); }
+
+/* ═══════════════════════════════════
+   ADVERTENCIA
+═══════════════════════════════════ */
+.warn-box {
+  background: rgba(255,233,78,0.05);
+  border: 1px solid rgba(255,233,78,0.2);
+  border-left: 3px solid var(--yellow);
+  border-radius: 6px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+.warn-box-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--yellow);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.warn-box p {
+  font-size: 13px;
+  color: var(--text);
+  opacity: 0.75;
+  line-height: 1.8;
+}
+
+/* ═══════════════════════════════════
+   FOOTER
+═══════════════════════════════════ */
+footer {
+  text-align: center;
+  padding: 48px 40px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+footer .f-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--green);
+  text-shadow: 0 0 14px var(--green-dim);
+  letter-spacing: 5px;
+  display: block;
+  margin-bottom: 10px;
+}
+footer p { margin-top: 8px; }
+footer .f-warn { color: rgba(255,233,78,0.5); margin-top: 12px; font-size: 10px; }
+
+/* ═══════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════ */
+@media (max-width: 700px) {
+  header { padding: 14px 20px; }
+  .nav-links a { font-size: 10px; padding: 5px 10px; letter-spacing: 1px; }
+  .hero { padding: 60px 20px 40px; min-height: auto; }
+  section { padding: 60px 20px; }
+  .hero-stats { gap: 28px; }
+  .flags-table { font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="matrix"></canvas>
+
+<div class="page">
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <span class="ok">[OK] HexGuard v2.0.0 :: STABLE</span>
+    <span class="warn">[WARN] Ejecutar únicamente en sistemas autorizados</span>
+    <span class="ok">[OK] Compatible: Debian · Ubuntu · Kali · Parrot</span>
+    <span class="warn">[INFO] Requiere Python 3.8+ y privilegios root</span>
+    <span class="ok">[OK] Módulos activos: 10/10</span>
+    <span class="warn">[INFO] Backup automático de sshd_config antes de modificar</span>
+    <span class="ok">[OK] Licencia: MIT — Open Source</span>
+    <span class="err">[WARN] No usar en sistemas sin permiso expreso</span>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">HexGuard <em>// v2.0.0</em></div>
+  <nav class="nav-links">
+    <a href="#modulos">Módulos</a>
+    <a href="#instalacion">Instalar</a>
+    <a href="#uso">Uso</a>
+    <a href="#advertencias">Avisos</a>
+  </nav>
+  <div class="header-status">
+    <div class="dot-live"></div>
+    <span id="clk">00:00:00</span>
+  </div>
+</header>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <div class="hero-prompt">root@kali:~# <span>./hexguard.py --launch</span></div>
+  <div class="hero-eyebrow">Linux Security Toolkit</div>
+
+  <h1 class="hero-title">HexGuard</h1>
+  <div class="hero-subtitle">Security Hardening Toolkit by Lucasfoking</div>
+
+  <p class="hero-desc">
+    Script Python de hardening automatizado para sistemas Linux.
+    Aplica 10 módulos de seguridad independientes — desde firewall y SSH
+    hasta detección de rootkits y auditoría forense — con un solo comando.
+  </p>
+
+  <div class="hero-cta">
+    <button onclick="downloadHexguard()" class="btn-primary">
+      ↓ &nbsp;Descargar hexguard.py
+    </button>
+    <a href="#modulos" class="btn-secondary">
+      Ver módulos →
+    </a>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-n">10</span><span class="stat-l">Módulos</span></div>
+    <div class="stat"><span class="stat-n">0</span><span class="stat-l">Dependencias</span></div>
+    <div class="stat"><span class="stat-n">MIT</span><span class="stat-l">Licencia</span></div>
+    <div class="stat"><span class="stat-n">Py3</span><span class="stat-l">Python 3.8+</span></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- ═══ MÓDULOS ═══ -->
+<section id="modulos">
+  <div class="sec-label">// Funcionalidades</div>
+  <h2 class="sec-title">Módulos de Hardening</h2>
+  <p class="sec-desc">
+    Cada módulo es independiente y puede ejecutarse de forma aislada o en conjunto.
+    Todos los cambios se registran en <code style="color:var(--green)">/var/log/hexguard.log</code>.
+  </p>
+
+  <div class="modules-grid">
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-01</div>
+      <span class="mod-icon">📦</span>
+      <div class="mod-title">Actualización del Sistema</div>
+      <p class="mod-desc">Actualiza el índice de paquetes, aplica todos los upgrades de seguridad disponibles y elimina dependencias huérfanas.</p>
+      <div class="mod-cmd"><span>--update</span> &nbsp;|&nbsp; apt update + upgrade</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-02</div>
+      <span class="mod-icon">🔥</span>
+      <div class="mod-title">Firewall UFW</div>
+      <p class="mod-desc">Instala y configura UFW con política deny-all en entrante. Abre únicamente los puertos SSH (22), HTTP (80) y HTTPS (443).</p>
+      <div class="mod-cmd"><span>--firewall</span> &nbsp;|&nbsp; ufw + reglas</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-03</div>
+      <span class="mod-icon">🔐</span>
+      <div class="mod-title">SSH Hardening</div>
+      <p class="mod-desc">Modifica <code style="color:var(--green)">/etc/ssh/sshd_config</code>: deshabilita login root, autenticación por contraseña, reduce MaxAuthTries a 3 y LoginGraceTime a 30s. Crea backup automático antes de modificar.</p>
+      <div class="mod-cmd"><span>--ssh</span> &nbsp;|&nbsp; sshd_config</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-04</div>
+      <span class="mod-icon">🛡</span>
+      <div class="mod-title">Fail2Ban</div>
+      <p class="mod-desc">Instala y activa Fail2Ban para bloquear automáticamente IPs que superan el umbral de intentos de autenticación fallidos.</p>
+      <div class="mod-cmd"><span>--fail2ban</span> &nbsp;|&nbsp; jail SSH</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-05</div>
+      <span class="mod-icon">🔍</span>
+      <div class="mod-title">Escaneo de Rootkits</div>
+      <p class="mod-desc">Ejecuta <code style="color:var(--green)">chkrootkit</code> para detectar rootkits, backdoors y exploits locales conocidos en el sistema.</p>
+      <div class="mod-cmd"><span>--scan</span> &nbsp;|&nbsp; chkrootkit</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-06</div>
+      <span class="mod-icon">👤</span>
+      <div class="mod-title">Auditoría de Usuarios</div>
+      <p class="mod-desc">Lista todos los usuarios del sistema, detecta cuentas con UID 0 (equivalentes a root), shells interactivas activas y el historial de los últimos 10 logins.</p>
+      <div class="mod-cmd"><span>--audit</span> &nbsp;|&nbsp; /etc/passwd</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-07</div>
+      <span class="mod-icon">⛔</span>
+      <div class="mod-title">Servicios Inseguros</div>
+      <p class="mod-desc">Detecta y deshabilita servicios que transmiten datos en texto plano: telnet, rsh, rlogin, ftp, vsftpd. Solo actúa si están instalados.</p>
+      <div class="mod-cmd"><span>--services</span> &nbsp;|&nbsp; systemctl disable</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-08</div>
+      <span class="mod-icon">📁</span>
+      <div class="mod-title">Permisos Críticos</div>
+      <p class="mod-desc">Verifica y corrige permisos de <code style="color:var(--green)">/etc/passwd</code> (644), <code style="color:var(--green)">/etc/shadow</code> (640), <code style="color:var(--green)">/root</code> (700) y <code style="color:var(--green)">/etc/sudoers</code> (440).</p>
+      <div class="mod-cmd"><span>--perms</span> &nbsp;|&nbsp; chmod + chown</div>
+    </div>
+
+    <div class="mod-card">
+      <div class="mod-num">// MOD-09</div>
+      <span class="mod-icon">📋</span>
+      <div class="mod-title">Análisis de Logs SSH</div>
+      <p class="mod-desc">Lee <code style="color:var(--green)">/var/log/auth.log</code> (o <code style="color:var(--green)">/var/log/secure</code>) y muestra los últimos 20 intentos fallidos y el top 10 de IPs atacantes.</p>
+      <div class="mod-cmd"><span>--logs</span> &nbsp;|&nbsp; auth.log</div>
+    </div>
+
+    <div class="mod-card" style="border-color: rgba(0,255,156,0.2); background: rgba(0,255,156,0.04);">
+      <div class="mod-num">// MOD-10</div>
+      <span class="mod-icon">⚡</span>
+      <div class="mod-title" style="color:#fff;">Hardening Completo</div>
+      <p class="mod-desc">Ejecuta los 10 módulos en secuencia óptima con confirmación previa. Genera un resumen final con inicio, fin y duración total.</p>
+      <div class="mod-cmd"><span>--full</span> &nbsp;|&nbsp; todos los módulos</div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ INSTALACIÓN ═══ -->
+<section id="instalacion">
+  <div class="sec-label">// Inicio rápido</div>
+  <h2 class="sec-title">Instalación</h2>
+  <p class="sec-desc">
+    HexGuard no tiene dependencias externas. Solo Python 3.8+ y privilegios root.
+    Descarga el script y ejecútalo.
+  </p>
+
+  <div class="terminal-wrap">
+    <div class="terminal-bar">
+      <div class="tdot tdot-r"></div>
+      <div class="tdot tdot-y"></div>
+      <div class="tdot tdot-g"></div>
+      <span class="t-title">root@kali — bash — 80×24</span>
+    </div>
+    <div class="terminal-body">
+
+      <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> # Opción 1 — Descarga directa</span></div>
+      <div class="tline gap"><span class="tprompt">root@kali:~#</span><span class="tcmd"> wget https://tudominio.com/hexguard.py</span></div>
+
+      <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> # Opción 2 — Clonar repositorio</span></div>
+      <div class="tline gap"><span class="tprompt">root@kali:~#</span><span class="tcmd"> git clone https://github.com/tuusuario/hexguard.git && cd hexguard</span></div>
+
+      <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> # Dar permisos de ejecución</span></div>
+      <div class="tline gap"><span class="tprompt">root@kali:~#</span><span class="tcmd"> chmod +x hexguard.py</span></div>
+
+      <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> # Verificar instalación</span></div>
+      <div class="tline gap"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --version</span></div>
+
+      <div class="tline"><span class="tout ok">[OK] HexGuard 2.0.0 · Python 3.x · root ✓</span></div>
+      <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> <span class="tcursor">█</span></span></div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ USO ═══ -->
+<section id="uso">
+  <div class="sec-label">// Referencia CLI</div>
+  <h2 class="sec-title">Cómo Usarlo</h2>
+  <p class="sec-desc">
+    HexGuard funciona en dos modos: menú interactivo (sin argumentos) o modo directo pasando flags.
+  </p>
+
+  <div style="margin-bottom: 40px;">
+    <div class="terminal-wrap">
+      <div class="terminal-bar">
+        <div class="tdot tdot-r"></div><div class="tdot tdot-y"></div><div class="tdot tdot-g"></div>
+        <span class="t-title">ejemplos de uso</span>
+      </div>
+      <div class="terminal-body">
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py</span></div>
+        <div class="tline gap"><span class="tout"># Lanza el menú interactivo completo</span></div>
+
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --full</span></div>
+        <div class="tline gap"><span class="tout"># Hardening completo (todos los módulos)</span></div>
+
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --firewall --ssh</span></div>
+        <div class="tline gap"><span class="tout"># Solo firewall + SSH hardening</span></div>
+
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --scan --logs</span></div>
+        <div class="tline gap"><span class="tout"># Escanear rootkits + analizar logs SSH</span></div>
+
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --audit --perms</span></div>
+        <div class="tline gap"><span class="tout"># Auditoría usuarios + verificar permisos</span></div>
+
+        <div class="tline"><span class="tprompt">root@kali:~#</span><span class="tcmd"> sudo python3 hexguard.py --full --no-banner</span></div>
+        <div class="tline"><span class="tout"># Hardening completo sin banner (ideal en scripts)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-family:'Orbitron',sans-serif;font-size:13px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:16px;">Referencia de flags</h3>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;overflow:hidden;">
+    <table class="flags-table">
+      <thead>
+        <tr>
+          <th>Flag</th>
+          <th>Módulo</th>
+          <th>Descripción</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>--update</td><td>MOD-01</td><td>Actualizar paquetes del sistema (apt update + upgrade)</td></tr>
+        <tr><td>--firewall</td><td>MOD-02</td><td>Configurar UFW con política deny-all en entrante</td></tr>
+        <tr><td>--ssh</td><td>MOD-03</td><td>Aplicar hardening en /etc/ssh/sshd_config</td></tr>
+        <tr><td>--fail2ban</td><td>MOD-04</td><td>Instalar y activar Fail2Ban</td></tr>
+        <tr><td>--scan</td><td>MOD-05</td><td>Ejecutar escaneo de rootkits con chkrootkit</td></tr>
+        <tr><td>--audit</td><td>MOD-06</td><td>Auditoría de cuentas de usuario del sistema</td></tr>
+        <tr><td>--services</td><td>MOD-07</td><td>Deshabilitar servicios inseguros (telnet, rsh, ftp...)</td></tr>
+        <tr><td>--perms</td><td>MOD-08</td><td>Verificar y corregir permisos de archivos críticos</td></tr>
+        <tr><td>--logs</td><td>MOD-09</td><td>Analizar intentos fallidos en auth.log</td></tr>
+        <tr><td>--full</td><td>MOD-10</td><td>Ejecutar todos los módulos en secuencia</td></tr>
+        <tr><td>--no-banner</td><td>—</td><td>Omitir el banner (útil en automatización/CI)</td></tr>
+        <tr><td>--version</td><td>—</td><td>Mostrar versión instalada</td></tr>
+        <tr><td>--help</td><td>—</td><td>Mostrar ayuda completa con ejemplos</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ═══ ADVERTENCIAS ═══ -->
+<section id="advertencias">
+  <div class="sec-label">// Antes de ejecutar</div>
+  <h2 class="sec-title">Advertencias</h2>
+
+  <div class="warn-box">
+    <div class="warn-box-title">⚠ Uso Exclusivamente Autorizado</div>
+    <p>HexGuard modifica configuraciones críticas del sistema. Úsalo únicamente en sistemas de tu propiedad o con autorización expresa por escrito. El uso no autorizado puede ser ilegal en tu jurisdicción.</p>
+  </div>
+
+  <div class="warn-box">
+    <div class="warn-box-title">⚠ Módulo SSH — Lee antes de aplicar</div>
+    <p>El módulo <code style="color:var(--yellow)">--ssh</code> deshabilita la autenticación por contraseña. Si aún no tienes una clave SSH configurada en el servidor, perderás el acceso remoto. Configura tu clave pública antes de ejecutar este módulo. Se crea un backup automático en <code style="color:var(--yellow)">/etc/ssh/sshd_config.bak</code>.</p>
+  </div>
+
+  <div class="warn-box">
+    <div class="warn-box-title">⚠ Hardening Completo — Ten consola de emergencia</div>
+    <p>El modo <code style="color:var(--yellow)">--full</code> modifica simultáneamente firewall, SSH y permisos del sistema. Se recomienda ejecutarlo con acceso físico al servidor o desde una consola de emergencia / VNC, por si necesitas revertir cambios.</p>
+  </div>
+
+  <div style="margin-top: 24px; padding: 20px 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: 6px;">
+    <p style="font-size:12px;color:var(--muted);line-height:1.9;">
+      <strong style="color:var(--green);">Restaurar SSH:</strong> Si necesitas revertir la configuración SSH:<br>
+      <code style="color:var(--green);">sudo cp /etc/ssh/sshd_config.bak /etc/ssh/sshd_config && sudo systemctl restart ssh</code>
+    </p>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <span class="f-logo">HexGuard</span>
+  <p>Security Hardening Toolkit v2.0.0 &nbsp;·&nbsp; Licencia MIT &nbsp;·&nbsp; Python 3.8+</p>
+  <p>Compatible con Debian · Ubuntu · Kali Linux · Parrot OS</p>
+  <p style="margin-top:18px;font-size:12px;color:var(--green);opacity:0.7;letter-spacing:3px;">
+    Creado por <strong style="color:var(--green);opacity:1;text-shadow:0 0 10px var(--green-dim);">lucasfoking</strong>
+  </p>
+  <p class="f-warn">⚠ Uso exclusivamente en sistemas propios o con autorización expresa. El uso no autorizado puede ser ilegal.</p>
+</footer>
+
+</div><!-- .page -->
+
+<!-- Contenido embebido del script (usado como fallback de descarga) -->
+<script id="hexguard-src" type="text/plain" style="display:none"></script>
+
+<script>
+// Carga el contenido del .py en el elemento oculto al arrancar
+fetch('hexguard.py')
+  .then(r => r.ok ? r.text() : Promise.reject())
+  .then(t => { document.getElementById('hexguard-src').textContent = t; })
+  .catch(() => {});
+</script>
+
+<script>
+/* MATRIX */
+const c = document.getElementById('matrix');
+const ctx = c.getContext('2d');
+const resize = () => { c.width = innerWidth; c.height = innerHeight; };
+resize(); window.addEventListener('resize', resize);
+const chars = 'アイウエオカキクケコ01ABCDEF<>{}[];#$%&@|\\/?';
+const fs = 13;
+let drops = [];
+const init = () => { drops = Array(Math.floor(c.width/fs)).fill(1); };
+init(); window.addEventListener('resize', init);
+setInterval(() => {
+  ctx.fillStyle = 'rgba(3,10,5,0.06)';
+  ctx.fillRect(0,0,c.width,c.height);
+  drops.forEach((d,i) => {
+    ctx.fillStyle = Math.random()>.95?'#fff':'#00ff9c88';
+    ctx.font = fs+'px Share Tech Mono';
+    ctx.fillText(chars[Math.floor(Math.random()*chars.length)], i*fs, d*fs);
+    if(d*fs > c.height && Math.random()>.978) drops[i]=0;
+    drops[i]++;
+  });
+}, 55);
+
+/* DESCARGA */
+function downloadHexguard() {
+  fetch('hexguard.py')
+    .then(r => {
+      if (!r.ok) throw new Error('no encontrado');
+      return r.blob();
+    })
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a   = document.createElement('a');
+      a.href     = url;
+      a.download = 'hexguard.py';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      // Si el servidor no tiene el archivo, descarga el contenido embebido
+      const code = document.getElementById('hexguard-src').textContent;
+      const blob = new Blob([code], { type: 'text/x-python' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'hexguard.py';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+}
+
+
+const clk = document.getElementById('clk');
+setInterval(() => {
+  const n = new Date();
+  clk.textContent = [n.getHours(),n.getMinutes(),n.getSeconds()]
+    .map(x=>String(x).padStart(2,'0')).join(':');
+}, 1000);
+</script>
+
+</body>
+</html>
